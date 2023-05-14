@@ -362,11 +362,14 @@ int main() {
   STATUS game_loop = TRUE;
   bool pause = FALSE;
   GameLogic space;
-
   // toggle true means beam is thrown
   STATUS toggle;
   SetTraceLogLevel(LOG_ERROR);
   SetTargetFPS(60);
+
+  InitAudioDevice();
+  Music music = LoadMusicStream("Anarchy.mp3");
+  PlayMusicStream(music);
 
   StaticInformation properties;
   Controller controller;
@@ -405,6 +408,7 @@ int main() {
 
     ClearBackground(RAYWHITE);
     if (pause) {
+      SeekMusicStream(music, 0);
       DrawTexture(pause_menu, 0, 0, WHITE);
       space.set_object_size(b1.return_property(), 0);
       space.set_object_size(b2.return_property(), 0);
@@ -412,6 +416,12 @@ int main() {
       space.set_object_size(b4.return_property(), 0);
       DrawText("GAME\nOVER", 40, 200, 120, WHITE);
     } else {
+
+      UpdateMusicStream(music);
+      // std::cout << GetMusicTimePlayed(music) << std::endl;
+      if (GetMusicTimePlayed(music) > 140) {
+        SeekMusicStream(music, 2);
+      }
       DrawTexture(background, -6, 1, WHITE);
       spaceship.render(spaceship_property);
 
