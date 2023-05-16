@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cstdint>
 #include <cstdlib>
 #include <iostream>
 #include <raylib.h>
@@ -10,6 +11,7 @@
 #define spaceship_height 20
 #define boulder_width 40
 #define boulder_height 40
+int score = 0;
 
 class Boulder;
 class Controller;
@@ -122,7 +124,9 @@ void RenderObjects::update(ObjectProperties obj, Color COLOR, Texture2D tex) {
   v.y = obj.h;
 
   DrawRectangle(obj.w, obj.h, obj.obj_w, obj.obj_h, BLANK);
-  DrawTextureV(tex, v, COLOR);
+  DrawTextureV(tex, v, WHITE);
+
+  //DrawTextureEx(tex, v, 0,  1.5f, WHITE);
 }
 
 class Boulder : public RenderObjects {
@@ -138,7 +142,9 @@ public:
     boulder_property->obj_w = boulder_width;
   };
   ObjectProperties *return_property() { return boulder_property; }
-  void set_speed() { boulder_property->w += (int)(rand() % 3 + 2); }
+  void set_speed() { 
+    boulder_property->w += (int)(rand() % 3 + 3 + float(score / 10.0));
+  }
   void reset_property() {
     boulder_property->w = 900;
     boulder_property->h = 900;
@@ -211,7 +217,7 @@ void GameLogic::set_object_size(ObjectProperties *obj, int size) {
 }
 
 void StaticInformation::set_window_status() {
-  width = 400;
+  width = 400 * 2;
   height = 650;
   std::string title = "space shooter";
 
@@ -236,7 +242,7 @@ public:
       }
     } else if (IsKeyDown(KEY_UP)) {
       spaceship->w += 0;
-      spaceship->h -= 5;
+      spaceship->h -= 7;
       // std::cout << "R Y: " << spaceship->h << std::endl;
       if (spaceship->h < 0) {
         spaceship->h = 0;
@@ -245,7 +251,7 @@ public:
       // std::cout << "R Y: " << spaceship->h << std::endl;
       if (spaceship->h < window_properties->get_height() - 10) {
         spaceship->w += 0;
-        spaceship->h += 5;
+        spaceship->h += 7;
       } else {
         // spaceship->h = properties->get_height() - 2;
       }
@@ -322,7 +328,7 @@ int BulletEngine::render_bullet() {
   std::vector<ObjectProperties>::iterator it;
   for (it = total_bullets->begin(); it < total_bullets->end(); it++) {
     update(*it, WHITE, tex);
-    it->w += -2;
+    it->w += -4;
     render(*it);
 
     // COLLISSION
@@ -358,6 +364,26 @@ int BulletEngine::render_bullet() {
   return 0;
 }
 
+class MusicAnarchy{
+  private:
+    Music music;
+  public:
+    void init_music(std::string filename) {
+    InitAudioDevice();
+    music = LoadMusicStream(filename.c_str());
+    PlayMusicStream(music);
+    }
+  void set_position(int length){
+    SeekMusicStream(music, length);
+  }
+  void play_music(){
+    UpdateMusicStream(music);
+  }
+  float get_current_timestamp(){
+    return GetMusicTimePlayed(music);
+  }
+};
+
 int main() {
   STATUS game_loop = TRUE;
   bool pause = FALSE;
@@ -367,9 +393,8 @@ int main() {
   SetTraceLogLevel(LOG_ERROR);
   SetTargetFPS(60);
 
-  InitAudioDevice();
-  Music music = LoadMusicStream("Anarchy.mp3");
-  PlayMusicStream(music);
+  MusicAnarchy music;
+  music.init_music("Anarchy.mp3");
 
   StaticInformation properties;
   Controller controller;
@@ -398,29 +423,23 @@ int main() {
   BulletEngine bullet_engine;
   Texture2D tex = LoadTexture("shooter.png");
 
-  int score = 0;
   while (game_loop) {
     controller.initcontroller(&spaceship_property, &properties, &pause,
                               &game_loop);
 
     scrollingBack -= 9.0f;
-    BeginDrawing();
-
     ClearBackground(RAYWHITE);
     if (pause) {
-      SeekMusicStream(music, 0);
+      music.set_position(0);
       DrawTexture(pause_menu, 0, 0, WHITE);
-      space.set_object_size(b1.return_property(), 0);
-      space.set_object_size(b2.return_property(), 0);
-      space.set_object_size(b3.return_property(), 0);
-      space.set_object_size(b4.return_property(), 0);
+      space.return_property()->h = 0;
+      space.return_property()->w = 0;
       DrawText("GAME\nOVER", 40, 200, 120, WHITE);
     } else {
-
-      UpdateMusicStream(music);
+      music.play_music();
       // std::cout << GetMusicTimePlayed(music) << std::endl;
-      if (GetMusicTimePlayed(music) > 140) {
-        SeekMusicStream(music, 2);
+      if (music.get_current_timestamp() > 140) {
+        music.set_position(2);
       }
       DrawTexture(background, -6, 1, WHITE);
       spaceship.render(spaceship_property);
@@ -433,6 +452,8 @@ int main() {
 
       DrawText("Score", 260, 20, 20, RED);
       DrawText(std::to_string(score).c_str(), 360, 20, 20, RED);
+      DrawText("Level", 560, 20, 20, RED);
+      DrawText(std::to_string(score/10).c_str(), 660, 20, 20, RED);
 
       spaceship.update(spaceship_property, RED, tex);
 
